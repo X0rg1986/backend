@@ -3,19 +3,81 @@
 namespace Tests\Feature;
 
 // use Illuminate\Foundation\Testing\RefreshDatabase;
+
+use App\Models\Book;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class ExampleTest extends TestCase
+class BooksApiTest extends TestCase
 {
-    /**
-     * A basic test example.
-     *
-     * @return void
-     */
-    public function test_the_application_returns_a_successful_response()
-    {
-        $response = $this->get('/');
+    use RefreshDatabase;
+    /** @test */
+    function can_get_all_books(){
+        $books = Book::factory(4)->create();
 
-        $response->assertStatus(200);
+        $response = $this->getJson(route('books.index'));
+
+        $response->assertJsonFragment([
+            'title' => $books[0]->title
+        ]);
+
     }
+
+    /** @test */
+    function can_get_one_book(){
+
+        $book = Book::factory()->create();
+
+        $response = $this->getJson(route('books.show', $book))
+        ->assertJsonFragment([
+            'title' => $book->title
+        ]);
+    }
+
+    /** @test */
+    function can_create_book(){
+        $this->postJson(route('books.store', []))
+        ->assertJsonValidationErrorFor('title');
+
+        $this->postJson(route('books.store'), [
+            'title' => 'my new book'
+        ])->assertJsonFragment([
+            'title' => 'my new book',
+        ]);
+
+        $this->assertDatabaseHas('books', [
+            'title' => 'my new book',
+        ]);
+    }
+
+    /** @test */
+    function can_get_update_book(){
+
+        $book = Book::factory()->create();
+
+        $this->patchJson(route('books.update', $book), [])
+        ->assertJsonValidationErrorFor('title');
+
+        $this->patchJson(route('books.update', $book), [
+            'title'=>'Edited book',
+        ])->assertJsonFragment([
+            'title' => 'Edited book',
+        ]);
+
+        $this->assertDatabaseHas('books',[
+            'title' => 'Edited book',
+        ]);
+    }
+
+    /** @test */
+
+    function can_delete_books(){
+        $book = Book::factory()->create();
+
+        $this->deleteJson(route('books.destroy', $book))
+        ->assertNoContent();
+
+        $this->assertDatabaseCount('books', 0);
+    }
+
 }
